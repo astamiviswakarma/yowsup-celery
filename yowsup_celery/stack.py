@@ -9,29 +9,31 @@ from yowsup_celery import exceptions
 from yowsup.layers import YowLayerEvent
 from yowsup.layers.auth import AuthError
 from yowsup.layers.network import YowNetworkLayer
+
 try:
     import Queue
 except ImportError:
     import queue as Queue
-    
+
 logger = logging.getLogger(__name__)
+
 
 class YowsupStack(stacks.YowStack):
     """
     Gateway for Yowsup in a client API way
-    
+
     :ivar bool listening: asyncore loop task in execution
     :ivar Queue detached_queue: Queue with callbacks to execute after
     :ivar YowLayerInterface facade:layer interface on top of stack
     disconnection
     """
-    
+
     def __init__(self, credentials, encryption=False, top_layers=None):
         """
         :param credentials: number and registed password
         :param bool encryptionEnabled:  E2E encryption enabled/ disabled
-        :params top_layers: tuple of layer between :class:`yowsup_gateway.layer.CeleryLayer` 
-        and Yowsup Core Layers  
+        :params top_layers: tuple of layer between :class:`yowsup_gateway.layer.CeleryLayer`
+        and Yowsup Core Layers
         """
         top_layers = top_layers + (CeleryLayer,) if top_layers else (CeleryLayer,)
         layers = stacks.YowStackBuilder.getDefaultLayers(axolotl=encryption) + top_layers
@@ -43,10 +45,10 @@ class YowsupStack(stacks.YowStack):
         self.detached_queue = Queue.Queue()
         self.facade = self.getLayerInterface(CeleryLayer)
         self.listening = False
-        
+
     def execDetached(self, fn):
         return self.detached_queue.put(fn)
-            
+
     def cleanup(self):
         self.listening = False
         self.detached_queue = Queue.Queue()

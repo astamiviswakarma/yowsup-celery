@@ -2,6 +2,7 @@ import six
 import sys
 from importlib import import_module
 
+
 def import_string(dotted_path):
     """
     Import a dotted module path and return the attribute/class designated by the

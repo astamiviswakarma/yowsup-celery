@@ -22,17 +22,20 @@ from yowsup.layers.protocol_media.mediauploader import MediaUploader
 
 logger = logging.getLogger(__name__)
 
+
 def connection_required(f):
     @wraps(f)
     def decorated_function(self, *args, **kwargs):
         if not self.connected:
             raise ConnectionError("%s needs to be connected" % f.__name__)
         return f(self, *args, **kwargs)
+
     return decorated_function
 
-class CeleryLayer(YowInterfaceLayer):    
+
+class CeleryLayer(YowInterfaceLayer):
     """
-    Layer to be on the top of the Yowsup Stack. 
+    Layer to be on the top of the Yowsup Stack.
     :ivar bool connected: connected or not connected to whatsapp
     :ivar YowLayerInterface interface: layer interface
     """
@@ -49,7 +52,7 @@ class CeleryLayer(YowInterfaceLayer):
             return "%s@g.us" % number
 
         return "%s@s.whatsapp.net" % number
-    
+
     def do_send_image(self, file_path, url, to, ip=None, caption=None):
         entity = ImageDownloadableMediaMessageProtocolEntity.fromFilePath(file_path, url, ip, to, caption=caption)
         self.toLower(entity)
@@ -57,7 +60,7 @@ class CeleryLayer(YowInterfaceLayer):
     def do_send_audio(self, file_path, url, to, ip=None, caption=None):
         entity = AudioDownloadableMediaMessageProtocolEntity.fromFilePath(file_path, url, ip, to)
         self.toLower(entity)
-        
+
     @ProtocolEntityCallback("success")
     def on_success(self, success_protocol_entity):
         """
@@ -65,25 +68,25 @@ class CeleryLayer(YowInterfaceLayer):
         """
         logger.info("Logged in")
         self.connected = True
-            
+
     @ProtocolEntityCallback("failure")
     def on_failure(self, entity):
         """
-        Callback function when there is a failure in a connection to whatsapp 
+        Callback function when there is a failure in a connection to whatsapp
         server
         """
         logger.error("Login failed, reason: %s" % entity.getReason())
         self.connected = False
-        
+
     @ProtocolEntityCallback("ack")
     @connection_required
     def on_ack(self, entity):
         """
-        Callback function when receiving an ack for a sent message from 
+        Callback function when receiving an ack for a sent message from
         whatsapp
         """
         logger.info("Ack id %s received" % entity.getId())
-   
+
     @ProtocolEntityCallback("message")
     @connection_required
     def on_message(self, message_protocol_entity):
@@ -93,7 +96,7 @@ class CeleryLayer(YowInterfaceLayer):
         logger.info("Message id %s received" % message_protocol_entity.getId())
         # answer with receipt
         self.toLower(message_protocol_entity.ack())
-            
+
     @ProtocolEntityCallback("receipt")
     @connection_required
     def on_receipt(self, receipt_protocol_entity):
@@ -101,7 +104,7 @@ class CeleryLayer(YowInterfaceLayer):
         Callback function when receiving receipt message from whatsapp
         """
         self.toLower(receipt_protocol_entity.ack())
-        
+
     @EventCallback(YowNetworkLayer.EVENT_STATE_DISCONNECTED)
     @connection_required
     def on_disconnected(self, yowLayerEvent):
@@ -110,8 +113,8 @@ class CeleryLayer(YowInterfaceLayer):
         """
         logger.info("On disconnected")
         self.connected = False
-        
-    def on_request_upload_result(self, jid, path, result_request_upload_iq_protocol_entity, 
+
+    def on_request_upload_result(self, jid, path, result_request_upload_iq_protocol_entity,
                                  request_upload_iq_protocol_entity, caption=None):
 
         if request_upload_iq_protocol_entity.mediaType == RequestUploadIqProtocolEntity.MEDIA_TYPE_AUDIO:
@@ -123,21 +126,21 @@ class CeleryLayer(YowInterfaceLayer):
             do_send_fn(path, result_request_upload_iq_protocol_entity.getUrl(), jid,
                        result_request_upload_iq_protocol_entity.getIp(), caption)
         else:
-            success_fn = lambda filePath, jid, url: do_send_fn(filePath, url, jid, 
-                                                               result_request_upload_iq_protocol_entity.getIp(), 
+            success_fn = lambda filePath, jid, url: do_send_fn(filePath, url, jid,
+                                                               result_request_upload_iq_protocol_entity.getIp(),
                                                                caption)
             mediaUploader = MediaUploader(jid, self.getOwnJid(), path,
                                           result_request_upload_iq_protocol_entity.getUrl(),
                                           result_request_upload_iq_protocol_entity.getResumeOffset(),
                                           success_fn, self.on_upload_error, self.on_upload_progress, async=True)
             mediaUploader.start()
-            
+
     def on_upload_error(self, file_path, jid, url):
         logger.error("Upload file %s to %s for %s failed!" % (file_path, url, jid))
 
     def on_upload_progress(self, file_path, jid, url, progress):
         logger.info("%s => %s, %d%% \r" % (os.path.basename(file_path), jid, progress))
-    
+
     @connection_required
     def send_message(self, number, content):
         """
@@ -149,7 +152,7 @@ class CeleryLayer(YowInterfaceLayer):
                                                      else content, to=self.normalize_jid(number))
         self.toLower(outgoing_message)
         return outgoing_message
-        
+
     def connect(self):
         if self.connected:
             logger.warning("Already connected, disconnect first")
@@ -161,13 +164,13 @@ class CeleryLayer(YowInterfaceLayer):
     def disconnect(self):
         self.broadcastEvent(YowLayerEvent(YowNetworkLayer.EVENT_STATE_DISCONNECT))
         return True
-    
+
     def _send_media_path(self, number, path, type, caption=None):
         jid = self.normalize_jid(number)
         entity = RequestUploadIqProtocolEntity(type, filePath=path)
-        success_fn = lambda success_entity, original_entity: self.on_request_upload_result(jid, path, success_entity, 
+        success_fn = lambda success_entity, original_entity: self.on_request_upload_result(jid, path, success_entity,
                                                                                            original_entity, caption)
-        error_fn = lambda error_entity, original_entity: self.on_request_upload_error(jid, path, error_entity, 
+        error_fn = lambda error_entity, original_entity: self.on_request_upload_error(jid, path, error_entity,
                                                                                       original_entity)
         self._sendIq(entity, success_fn, error_fn)
 
@@ -179,7 +182,7 @@ class CeleryLayer(YowInterfaceLayer):
         :param str path: image file path
         """
         return self._send_media_path(number, path, RequestUploadIqProtocolEntity.MEDIA_TYPE_IMAGE, caption)
-        
+
     @connection_required
     def send_audio(self, number, path):
         """
@@ -188,7 +191,7 @@ class CeleryLayer(YowInterfaceLayer):
         :param str path: audio file path
         """
         return self._send_media_path(number, path, RequestUploadIqProtocolEntity.MEDIA_TYPE_AUDIO)
-    
+
     @connection_required
     def send_location(self, number, name, url, latitude, longitude):
         """
@@ -197,13 +200,13 @@ class CeleryLayer(YowInterfaceLayer):
         :param str name: indentifier for the location
         :param str url: location url
         :param str longitude: location longitude
-        :param str latitude: location latitude 
+        :param str latitude: location latitude
         """
-        location_message = LocationMediaMessageProtocolEntity(latitude, longitude, name, url, encoding="raw", 
+        location_message = LocationMediaMessageProtocolEntity(latitude, longitude, name, url, encoding="raw",
                                                               to=self.normalize_jid(number))
         self.toLower(location_message)
         return location_message
-    
+
     @connection_required
     def send_vcard(self, number, name, data):
         """

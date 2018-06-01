@@ -7,8 +7,8 @@ from yowsup_celery.exceptions import ConfigurationError
 
 logger = logging.getLogger(__name__)
 
-class YowsupStep(bootsteps.StartStopStep):    
-    
+
+class YowsupStep(bootsteps.StartStopStep):
     def _get_top_layers(self, worker):
         top_layers_string = worker.app.conf.table().get('TOP_LAYERS', None)
         top_layers = []
@@ -16,8 +16,8 @@ class YowsupStep(bootsteps.StartStopStep):
             for top_layer_string in top_layers_string:
                 top_layer = import_string(top_layer_string)
                 top_layers.append(top_layer)
-        return tuple(top_layers)    
-    
+        return tuple(top_layers)
+
     def _get_config(self, config):
         try:
             with open(config, 'r') as f:
@@ -33,7 +33,7 @@ class YowsupStep(bootsteps.StartStopStep):
         except IOError:
             logger.error("Invalid config path: %s" % config)
             raise ConfigurationError("Invalid config path: %s" % config)
-    
+
     def _get_credentials(self, login, config, worker):
         if login:
             return tuple(login.split(":"))
@@ -47,7 +47,7 @@ class YowsupStep(bootsteps.StartStopStep):
                 return config_credentials["phone"], config_credentials["password"]
             else:
                 return None
-        
+
     def __init__(self, worker, login, config, unmoxie, **kwargs):
         """
         :param worker: celery worker
@@ -61,7 +61,7 @@ class YowsupStep(bootsteps.StartStopStep):
         worker.app.stack = YowsupStack(credentials, not unmoxie, self._get_top_layers(worker))
         logger.info("Yowsup for %s intialized" % credentials[0])
 
-    def stop(self, worker):     
+    def stop(self, worker):
         logger.info("Stopping yowsup")
         if worker.app.stack.facade.connected():
             worker.app.stack.facade.disconnect()
