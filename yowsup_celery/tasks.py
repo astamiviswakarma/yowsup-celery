@@ -13,20 +13,20 @@ def listening_required(f):
             return f(self, *args, **kwargs)
     return decorated_function
 
-   
+
 class YowsupTask(Task):
     abstract = True
     default_retry_delay = 0.5
-    
+
     @property
     def stack(self):
         return self.app.stack
-    
+
     @property
     def facade(self):
         return self.app.stack.facade
-    
-    
+
+
 @shared_task(base=YowsupTask, bind=True, ignore_result=True)
 def listen(self):
     if not self.stack.listening:
@@ -38,7 +38,7 @@ def listen(self):
 @listening_required
 def connect(self):
     return self.facade.connect()
-        
+
 
 @shared_task(base=YowsupTask, bind=True)
 @listening_required
@@ -53,8 +53,8 @@ def send_message(self, number, content):
 
 @shared_task(base=YowsupTask, bind=True)
 @listening_required
-def send_image(self, number, path):
-    self.facade.send_image(number, path)
+def send_image(self, number, path, caption=None):
+    self.facade.send_image(number, path, caption)
     return True
 
 @shared_task(base=YowsupTask, bind=True)

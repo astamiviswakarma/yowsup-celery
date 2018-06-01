@@ -60,5 +60,7 @@ target/
 
 #pydev
 .project
+.idea
+*.iml
 .pydevproject
 .settings
