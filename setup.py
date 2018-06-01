@@ -17,8 +17,8 @@ with open('HISTORY.rst') as history_file:
 
 requirements = [
                 'celery>=3.1.19',
-                'gevent>=1.0.2',
-                #install fork git+https://github.com/jlmadurga/yowsup.git@issue_1181#egg=yowsup 
+                'gevent>=1.2.2',
+                #install fork git+https://github.com/jlmadurga/yowsup.git@issue_1181#egg=yowsup
                 'yowsup2'
                 ]
 test_requirements = requirements + [
