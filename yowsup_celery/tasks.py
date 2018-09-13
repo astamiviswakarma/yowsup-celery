@@ -1,7 +1,10 @@
 from __future__ import absolute_import
 
+import urllib, os
+
 from celery import Task, shared_task
 from functools import wraps
+
 
 def listening_required(f):
     @wraps(f)
@@ -11,12 +14,14 @@ def listening_required(f):
             return self.retry()
         else:
             return f(self, *args, **kwargs)
+
     return decorated_function
 
 
 class YowsupTask(Task):
     abstract = True
     default_retry_delay = 0.5
+    min_attributes = ('scheme', 'netloc')
 
     @property
     def stack(self):
@@ -27,12 +32,20 @@ class YowsupTask(Task):
         return self.app.stack.facade
 
 
+def is_valid_url(self, url, qualifying=None):
+    qualifying = self.min_attributes if qualifying is None else qualifying
+    token = urllib.parse.urlparse(url)
+    return all([getattr(token, qualifying_attr)
+                for qualifying_attr in qualifying])
+
+
 @shared_task(base=YowsupTask, bind=True, ignore_result=True)
 def listen(self):
     if not self.stack.listening:
         return self.stack.asynloop()
     else:
         return "Already listening"
+
 
 @shared_task(base=YowsupTask, bind=True)
 @listening_required
@@ -45,29 +58,42 @@ def connect(self):
 def disconnect(self):
     return self.facade.disconnect()
 
+
 @shared_task(base=YowsupTask, bind=True)
 @listening_required
 def send_message(self, number, content):
     self.facade.send_message(number, content)
     return True
 
+
 @shared_task(base=YowsupTask, bind=True)
 @listening_required
 def send_image(self, number, path, caption=None):
+    if is_valid_url(self, path):
+        url_path = urllib.parse.urlparse(path)
+        path, headers = urllib.request.urlretrieve(path, '/tmp/' + os.path.basename(url_path.path))
     self.facade.send_image(number, path, caption)
+    urllib.request.urlcleanup()
     return True
+
 
 @shared_task(base=YowsupTask, bind=True)
 @listening_required
 def send_audio(self, number, path):
+    if is_valid_url(self, path):
+        url_path = urllib.parse.urlparse(path)
+        path, headers = urllib.request.urlretrieve(path, '/tmp/' + os.path.basename(url_path.path))
     self.facade.send_audio(number, path)
+    urllib.request.urlcleanup()
     return True
+
 
 @shared_task(base=YowsupTask, bind=True)
 @listening_required
 def send_location(self, number, name, url, latitude, longitude):
     self.facade.send_location(number, name, url, latitude, longitude)
     return True
+
 
 @shared_task(base=YowsupTask, bind=True)
 @listening_required
