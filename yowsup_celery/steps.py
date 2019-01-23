@@ -53,7 +53,7 @@ class YowsupStep(bootsteps.StartStopStep):
             config = worker.app.conf.table().get('YOWSUPCONFIG', None)
         if config:
             environment_configs = self._get_config(config)
-            if "env" in environment_configs
+            if "env" in environment_configs:
                 return environment_configs["env"]
 
         return None
