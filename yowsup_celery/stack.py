@@ -4,6 +4,7 @@ import logging
 import sys
 import traceback
 from yowsup import stacks
+from yowsup.env import YowsupEnv
 from yowsup_celery.layer import CeleryLayer
 from yowsup_celery import exceptions
 from yowsup.layers import YowLayerEvent
@@ -28,13 +29,17 @@ class YowsupStack(stacks.YowStack):
     disconnection
     """
 
-    def __init__(self, credentials, encryption=False, top_layers=None):
+    def __init__(self, credentials, encryption=False, env=None, top_layers=None):
         """
         :param credentials: number and registed password
         :param bool encryptionEnabled:  E2E encryption enabled/ disabled
+        :param string env:  yowsup environment string
         :params top_layers: tuple of layer between :class:`yowsup_gateway.layer.CeleryLayer`
         and Yowsup Core Layers
         """
+        if env and isinstance(env, str):
+            YowsupEnv.setEnv(env)
+
         top_layers = top_layers + (CeleryLayer,) if top_layers else (CeleryLayer,)
         layers = stacks.YowStackBuilder.getDefaultLayers(axolotl=encryption) + top_layers
         try:

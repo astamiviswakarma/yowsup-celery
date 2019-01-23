@@ -48,6 +48,16 @@ class YowsupStep(bootsteps.StartStopStep):
             else:
                 return None
 
+    def _get_environment(self, config, worker):
+        if not config:
+            config = worker.app.conf.table().get('YOWSUPCONFIG', None)
+        if config:
+            environment_configs = self._get_config(config)
+            if "env" in environment_configs
+                return environment_configs["env"]
+
+        return None
+
     def __init__(self, worker, login, config, unmoxie, **kwargs):
         """
         :param worker: celery worker
@@ -58,7 +68,8 @@ class YowsupStep(bootsteps.StartStopStep):
         credentials = self._get_credentials(login, config, worker)
         if not credentials:
             raise ConfigurationError("Error: You must specify a configuration method")
-        worker.app.stack = YowsupStack(credentials, not unmoxie, self._get_top_layers(worker))
+        
+        worker.app.stack = YowsupStack(credentials, not unmoxie, self._get_environment(config, worker), self._get_top_layers(worker))
         logger.info("Yowsup for %s intialized" % credentials[0])
 
     def stop(self, worker):
